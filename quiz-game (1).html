@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧠 QUIZMASTER — Epic Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0c29;--card:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.12);
+  --accent:#a78bfa;--accent2:#fbbf24;--correct:#34d399;--wrong:#f87171;
+  --text:#f0f0ff;--muted:rgba(240,240,255,0.45);
+  --easy:#34d399;--medium:#fbbf24;--hard:#f87171;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%);min-height:100vh;font-family:'Nunito',sans-serif;color:var(--text);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.bg-emojis{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+.bg-emoji{position:absolute;opacity:0.07;animation:floatUp linear infinite;}
+@keyframes floatUp{0%{transform:translateY(110vh) rotate(0deg);opacity:0;}10%{opacity:0.07;}90%{opacity:0.07;}100%{transform:translateY(-10vh) rotate(360deg);opacity:0;}}
+#pcanvas{position:fixed;inset:0;pointer-events:none;z-index:50;}
+.app{position:relative;z-index:10;width:100%;max-width:640px;padding:20px;max-height:100vh;overflow-y:auto;}
+.app::-webkit-scrollbar{width:4px;}
+.app::-webkit-scrollbar-thumb{background:rgba(167,139,250,0.3);border-radius:2px;}
+
+.screen{display:none;}
+.screen.active{display:block;animation:screenIn 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes screenIn{from{opacity:0;transform:scale(0.92) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cardIn{from{opacity:0;transform:scale(0.9) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* START */
+.start-hero{text-align:center;margin-bottom:22px;}
+.hero-emoji{font-size:70px;display:block;margin-bottom:10px;animation:heroFloat 3s ease-in-out infinite;}
+@keyframes heroFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-16px) rotate(3deg)}}
+.hero-title{font-family:'Fredoka One',cursive;font-size:clamp(44px,9vw,68px);background:linear-gradient(135deg,#a78bfa,#fbbf24,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 30px rgba(167,139,250,0.5));animation:titlePulse 2s ease-in-out infinite;}
+@keyframes titlePulse{0%,100%{filter:drop-shadow(0 0 20px rgba(167,139,250,0.4))}50%{filter:drop-shadow(0 0 40px rgba(251,191,36,0.6))}}
+.hero-sub{font-size:13px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:6px;animation:fadeInUp 0.8s 0.3s both;}
+.sparkle-row{display:flex;justify-content:center;gap:14px;margin:10px 0;animation:fadeInUp 0.8s 0.5s both;}
+.sparkle{font-size:20px;animation:spin 3s linear infinite;}
+.sparkle:nth-child(2){animation-delay:-1s;}.sparkle:nth-child(3){animation-delay:-2s;}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+/* DIFFICULTY CARDS */
+.diff-section{margin-bottom:18px;animation:fadeInUp 0.8s 0.55s both;}
+.diff-label{font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;text-align:center;margin-bottom:11px;}
+.diff-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.diff-card{background:var(--card);border:2px solid var(--border);border-radius:20px;padding:16px 10px;text-align:center;cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden;backdrop-filter:blur(10px);}
+.diff-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity 0.25s;}
+.diff-card.easy-card::before{background:radial-gradient(ellipse at 50% 0%,rgba(52,211,153,0.18),transparent 70%);}
+.diff-card.medium-card::before{background:radial-gradient(ellipse at 50% 0%,rgba(251,191,36,0.18),transparent 70%);}
+.diff-card.hard-card::before{background:radial-gradient(ellipse at 50% 0%,rgba(248,113,113,0.18),transparent 70%);}
+.diff-card:hover::before,.diff-card.selected::before{opacity:1;}
+.diff-card.easy-card:hover,.diff-card.easy-card.selected{border-color:var(--easy);box-shadow:0 0 22px rgba(52,211,153,0.35);transform:translateY(-4px);}
+.diff-card.medium-card:hover,.diff-card.medium-card.selected{border-color:var(--medium);box-shadow:0 0 22px rgba(251,191,36,0.35);transform:translateY(-4px);}
+.diff-card.hard-card:hover,.diff-card.hard-card.selected{border-color:var(--hard);box-shadow:0 0 22px rgba(248,113,113,0.35);transform:translateY(-4px);}
+.diff-card.selected{transform:translateY(-4px) scale(1.03);}
+.diff-emoji{font-size:34px;display:block;margin-bottom:7px;transition:transform 0.2s;}
+.diff-card:hover .diff-emoji,.diff-card.selected .diff-emoji{transform:scale(1.2) rotate(5deg);}
+.diff-name{font-family:'Fredoka One',cursive;font-size:17px;display:block;margin-bottom:3px;}
+.easy-card .diff-name{color:var(--easy);}.medium-card .diff-name{color:var(--medium);}.hard-card .diff-name{color:var(--hard);}
+.diff-desc{font-size:10px;color:var(--muted);letter-spacing:1px;display:block;}
+.diff-timer{font-size:10px;margin-top:5px;display:block;}
+.easy-card .diff-timer{color:rgba(52,211,153,0.7);}.medium-card .diff-timer{color:rgba(251,191,36,0.7);}.hard-card .diff-timer{color:rgba(248,113,113,0.7);}
+.diff-pts{font-size:10px;font-weight:800;display:block;margin-top:2px;}
+.easy-card .diff-pts{color:rgba(52,211,153,0.6);}.medium-card .diff-pts{color:rgba(251,191,36,0.6);}.hard-card .diff-pts{color:rgba(248,113,113,0.6);}
+.diff-check{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;opacity:0;transform:scale(0);transition:all 0.25s;}
+.easy-card .diff-check{background:var(--easy);color:#000;}.medium-card .diff-check{background:var(--medium);color:#000;}.hard-card .diff-check{background:var(--hard);color:#000;}
+.diff-card.selected .diff-check{opacity:1;transform:scale(1);}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;animation:fadeInUp 0.8s 0.65s both;}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:13px;text-align:center;backdrop-filter:blur(10px);transition:transform 0.2s,box-shadow 0.2s;}
+.stat-box:hover{transform:translateY(-4px);box-shadow:0 8px 25px rgba(167,139,250,0.2);}
+.stat-box .se{font-size:22px;display:block;margin-bottom:3px;}
+.stat-box .sn{font-family:'Fredoka One',cursive;font-size:20px;color:var(--accent2);}
+.stat-box .sl{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+
+.lb-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:15px;backdrop-filter:blur(10px);animation:fadeInUp 0.8s 0.75s both;}
+.lb-title{font-family:'Fredoka One',cursive;font-size:18px;display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--accent2);}
+.lb-list{list-style:none;}
+.lb-list li{display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--border);font-size:13px;}
+.lb-list li:last-child{border-bottom:none;}
+.lb-rank{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex-shrink:0;}
+.lb-rank.gold{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;}
+.lb-rank.silver{background:linear-gradient(135deg,#cbd5e1,#94a3b8);color:#000;}
+.lb-rank.bronze{background:linear-gradient(135deg,#cd7f32,#a0522d);color:#fff;}
+.lb-rank.other{background:var(--border);color:var(--muted);}
+.lb-name{flex:1;}
+.lb-diff-tag{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;}
+.lb-diff-tag.easy{background:rgba(52,211,153,0.15);color:var(--easy);}
+.lb-diff-tag.medium{background:rgba(251,191,36,0.15);color:var(--medium);}
+.lb-diff-tag.hard{background:rgba(248,113,113,0.15);color:var(--hard);}
+.lb-score{color:var(--accent);font-weight:700;white-space:nowrap;}
+.lb-empty{color:var(--muted);font-size:13px;text-align:center;padding:12px;display:block;}
+
+.name-wrap{margin-bottom:13px;animation:fadeInUp 0.8s 0.85s both;}
+.name-wrap label{display:block;font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:7px;}
+.name-wrap input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-family:'Nunito',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color 0.2s,box-shadow 0.2s;backdrop-filter:blur(10px);}
+.name-wrap input:focus{border-color:var(--accent);box-shadow:0 0 20px rgba(167,139,250,0.2);}
+.name-wrap input::placeholder{color:var(--muted);}
+
+.btn{width:100%;padding:14px 24px;border:none;border-radius:14px;font-family:'Fredoka One',cursive;font-size:18px;letter-spacing:1px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;}
+.btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,0.15);opacity:0;transition:opacity 0.2s;}
+.btn:hover::after{opacity:1;}.btn:active{transform:scale(0.97);}
+.btn-primary{background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;box-shadow:0 8px 30px rgba(124,58,237,0.4);animation:fadeInUp 0.8s 0.95s both;}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 14px 40px rgba(124,58,237,0.6);}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+.btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--muted);backdrop-filter:blur(10px);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-row{display:flex;gap:10px;}.btn-row .btn{flex:1;}
+
+/* QUIZ SCREEN */
+.diff-banner{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;padding:8px 16px;margin-bottom:13px;font-family:'Fredoka One',cursive;font-size:15px;animation:fadeInUp 0.5s both;}
+.diff-banner.easy{background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);color:var(--easy);}
+.diff-banner.medium{background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:var(--medium);}
+.diff-banner.hard{background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:var(--hard);}
+
+.quiz-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;}
+.q-counter{font-size:13px;color:var(--muted);letter-spacing:1px;}
+.q-counter strong{font-family:'Fredoka One',cursive;font-size:20px;color:var(--accent);}
+.score-chip{background:linear-gradient(135deg,rgba(251,191,36,0.2),rgba(251,191,36,0.05));border:1px solid rgba(251,191,36,0.3);border-radius:20px;padding:5px 14px;font-weight:800;color:var(--accent2);font-size:14px;}
+.score-chip.bump{animation:scoreBump 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+@keyframes scoreBump{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+
+.timer-block{margin-bottom:11px;text-align:center;}
+.timer-num{font-family:'Fredoka One',cursive;font-size:34px;color:var(--accent2);margin-bottom:5px;transition:color 0.3s;}
+.timer-num.danger{color:var(--wrong);animation:numShake 0.3s infinite;}
+@keyframes numShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.timer-track{height:10px;background:rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;}
+.timer-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,#7c3aed,#a78bfa,#fbbf24);transition:width 1s linear,background 1s;position:relative;}
+.timer-fill::after{content:'';position:absolute;right:-1px;top:50%;transform:translateY(-50%);width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 10px #fff;}
+.timer-fill.danger{background:linear-gradient(90deg,#f87171,#fbbf24);}
+
+.dots-row{display:flex;gap:6px;margin-bottom:14px;justify-content:center;flex-wrap:wrap;}
+.dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.1);transition:all 0.4s;}
+.dot.current{background:var(--accent);box-shadow:0 0 12px var(--accent);transform:scale(1.5);animation:dotPulse 1s infinite;}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 12px var(--accent)}50%{box-shadow:0 0 22px var(--accent),0 0 32px rgba(167,139,250,0.4)}}
+.dot.correct{background:var(--correct);box-shadow:0 0 8px var(--correct);}
+.dot.wrong{background:var(--wrong);box-shadow:0 0 8px var(--wrong);}
+
+.q-card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:22px;margin-bottom:11px;backdrop-filter:blur(12px);position:relative;overflow:hidden;animation:cardIn 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+.q-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background-size:200% 100%;animation:shimmer 2s linear infinite;}
+.q-card.easy::before{background:linear-gradient(90deg,#34d399,#a7f3d0,#6ee7b7,#34d399);}
+.q-card.medium::before{background:linear-gradient(90deg,#fbbf24,#fde68a,#fcd34d,#fbbf24);}
+.q-card.hard::before{background:linear-gradient(90deg,#f87171,#fca5a5,#fc8181,#f87171);}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.q-cat{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:20px;padding:3px 12px;}
+.q-text{font-family:'Fredoka One',cursive;font-size:clamp(16px,3vw,21px);line-height:1.4;color:var(--text);}
+
+.feedback{border-radius:14px;padding:11px 15px;margin-bottom:11px;font-size:13px;font-weight:700;display:none;align-items:center;gap:10px;}
+.feedback.show{display:flex;animation:feedIn 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes feedIn{from{opacity:0;transform:scale(0.8) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.feedback.correct{background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);color:var(--correct);}
+.feedback.wrong{background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:var(--wrong);}
+.feed-emoji{font-size:26px;flex-shrink:0;animation:feedEmoji 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes feedEmoji{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}
+.feed-msg small{display:block;opacity:0.8;font-size:11px;margin-top:2px;font-weight:600;}
+
+.options{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:480px){.options{grid-template-columns:1fr;}}
+.opt-btn{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 14px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:'Nunito',sans-serif;font-size:13px;color:var(--text);font-weight:700;transition:all 0.2s;position:relative;overflow:hidden;backdrop-filter:blur(8px);animation:optIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;}
+.opt-btn:nth-child(1){animation-delay:0.05s}.opt-btn:nth-child(2){animation-delay:0.1s}
+.opt-btn:nth-child(3){animation-delay:0.15s}.opt-btn:nth-child(4){animation-delay:0.2s}
+@keyframes optIn{from{opacity:0;transform:translateX(-15px)}to{opacity:1;transform:translateX(0)}}
+.opt-btn:hover:not(:disabled){border-color:var(--accent);background:rgba(167,139,250,0.12);transform:translateY(-3px) scale(1.02);box-shadow:0 8px 25px rgba(167,139,250,0.25);}
+.opt-btn:active:not(:disabled){transform:scale(0.97);}
+.opt-btn:disabled{cursor:default;transform:none!important;}
+.opt-label{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:14px;flex-shrink:0;transition:all 0.3s;}
+.opt-btn.correct{border-color:var(--correct);background:rgba(52,211,153,0.15);animation:correctPop 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+.opt-btn.correct .opt-label{background:var(--correct);color:#000;}
+@keyframes correctPop{0%{transform:scale(1)}40%{transform:scale(1.07)}100%{transform:scale(1)}}
+.opt-btn.wrong{border-color:var(--wrong);background:rgba(248,113,113,0.15);animation:wrongShake 0.4s;}
+.opt-btn.wrong .opt-label{background:var(--wrong);color:#fff;}
+@keyframes wrongShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.opt-btn.reveal{border-color:rgba(52,211,153,0.5);opacity:0.75;}
+.opt-btn.reveal .opt-label{background:rgba(52,211,153,0.3);}
+
+/* FLOATERS */
+.reaction-float{position:fixed;font-size:46px;pointer-events:none;z-index:200;animation:reactionRise 1.2s ease-out forwards;}
+@keyframes reactionRise{0%{opacity:1;transform:translateY(0) scale(0.5)}30%{opacity:1;transform:translateY(-40px) scale(1.2)}100%{opacity:0;transform:translateY(-120px) scale(0.8)}}
+.streak-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:300;text-align:center;pointer-events:none;animation:streakBoom 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+@keyframes streakBoom{0%{transform:translate(-50%,-50%) scale(0);opacity:0}60%{transform:translate(-50%,-50%) scale(1.15);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.streak-inner{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;font-family:'Fredoka One',cursive;padding:14px 32px;border-radius:50px;font-size:22px;box-shadow:0 0 50px rgba(251,191,36,0.7);}
+.pulse-ring{position:fixed;border-radius:50%;pointer-events:none;z-index:150;border:3px solid var(--correct);animation:pulseRingOut 0.7s ease-out forwards;}
+@keyframes pulseRingOut{from{transform:scale(0.8);opacity:0.9}to{transform:scale(2.5);opacity:0}}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,0.3);pointer-events:none;animation:rippleOut 0.6s ease-out forwards;}
+@keyframes rippleOut{from{transform:scale(0);opacity:1}to{transform:scale(3);opacity:0}}
+.confetti-piece{position:fixed;pointer-events:none;z-index:200;animation:confettiFall linear forwards;}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+/* END SCREEN */
+.end-hero{text-align:center;margin-bottom:18px;}
+.end-trophy{font-size:84px;display:block;margin-bottom:8px;animation:trophyBounce 0.9s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes trophyBounce{0%{transform:scale(0) rotate(-20deg)}60%{transform:scale(1.15) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+.end-title{font-family:'Fredoka One',cursive;font-size:clamp(24px,5.5vw,38px);background:linear-gradient(135deg,#a78bfa,#fbbf24,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.result-card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:22px;margin-bottom:15px;backdrop-filter:blur(12px);text-align:center;animation:cardIn 0.6s 0.2s cubic-bezier(0.34,1.56,0.64,1) both;}
+.score-display{font-family:'Fredoka One',cursive;font-size:clamp(58px,13vw,88px);line-height:1;background:linear-gradient(135deg,#a78bfa,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:scoreIn 0.8s 0.4s both;}
+@keyframes scoreIn{from{opacity:0;transform:scale(0.5) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.score-outof{color:var(--muted);font-size:13px;margin-bottom:10px;}
+.grade-badge{display:inline-flex;align-items:center;gap:8px;font-family:'Fredoka One',cursive;font-size:15px;padding:7px 20px;border-radius:50px;margin-bottom:14px;animation:badgePop 0.5s 0.8s cubic-bezier(0.34,1.56,0.64,1) both;}
+@keyframes badgePop{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}
+.grade-s{background:linear-gradient(135deg,rgba(251,191,36,0.3),rgba(245,158,11,0.1));border:2px solid #fbbf24;color:#fbbf24;}
+.grade-a{background:rgba(52,211,153,0.15);border:2px solid var(--correct);color:var(--correct);}
+.grade-b{background:rgba(167,139,250,0.15);border:2px solid var(--accent);color:var(--accent);}
+.grade-c{background:rgba(248,113,113,0.15);border:2px solid var(--wrong);color:var(--wrong);}
+.breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;}
+.bd-item{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center;}
+.bd-emoji{font-size:20px;display:block;margin-bottom:3px;}
+.bd-val{font-family:'Fredoka One',cursive;font-size:20px;display:block;}
+.bd-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+</style>
+</head>
+<body>
+
+<div class="bg-emojis" id="bgwrap"></div>
+<canvas id="pcanvas"></canvas>
+
+<div class="app">
+
+  <!-- START SCREEN -->
+  <div class="screen active" id="screen-start">
+    <div class="start-hero">
+      <span class="hero-emoji">🧠</span>
+      <div class="hero-title">QUIZMASTER</div>
+      <div class="hero-sub">✨ Choose Your Challenge ✨</div>
+      <div class="sparkle-row">
+        <span class="sparkle">⭐</span><span class="sparkle">💫</span><span class="sparkle">⭐</span>
+      </div>
+    </div>
+
+    <div class="diff-section">
+      <div class="diff-label">🎯 Select Difficulty</div>
+      <div class="diff-cards">
+        <div class="diff-card easy-card" onclick="selectDiff('easy',this)">
+          <span class="diff-check">✓</span>
+          <span class="diff-emoji">🌱</span>
+          <span class="diff-name">Easy</span>
+          <span class="diff-desc">Basic knowledge</span>
+          <span class="diff-timer">⏱ 15 seconds</span>
+          <span class="diff-pts">+1 pt / answer</span>
+        </div>
+        <div class="diff-card medium-card" onclick="selectDiff('medium',this)">
+          <span class="diff-check">✓</span>
+          <span class="diff-emoji">🔥</span>
+          <span class="diff-name">Medium</span>
+          <span class="diff-desc">Think harder</span>
+          <span class="diff-timer">⏱ 10 seconds</span>
+          <span class="diff-pts">+2 pts / answer</span>
+        </div>
+        <div class="diff-card hard-card" onclick="selectDiff('hard',this)">
+          <span class="diff-check">✓</span>
+          <span class="diff-emoji">💀</span>
+          <span class="diff-name">Hard</span>
+          <span class="diff-desc">Expert level</span>
+          <span class="diff-timer">⏱ 7 seconds</span>
+          <span class="diff-pts">+3 pts / answer</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box"><span class="se">📚</span><div class="sn">10</div><div class="sl">Questions</div></div>
+      <div class="stat-box"><span class="se">🏆</span><div class="sn" id="hi-score">—</div><div class="sl">Best Score</div></div>
+      <div class="stat-box"><span class="se">🎯</span><div class="sn" id="hi-diff">—</div><div class="sl">Best Diff</div></div>
+    </div>
+
+    <div class="lb-card">
+      <div class="lb-title">🏅 Leaderboard</div>
+      <ul class="lb-list" id="lb-start"><li><span class="lb-empty">🌟 No scores yet — be the first!</span></li></ul>
+    </div>
+
+    <div class="name-wrap">
+      <label>👤 Your Name</label>
+      <input type="text" id="player-name" placeholder="Enter your name..." maxlength="20">
+    </div>
+
+    <button class="btn btn-primary" id="start-btn" onclick="startGame()" disabled>🎯 &nbsp;Pick a Difficulty First!</button>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div class="screen" id="screen-quiz">
+    <div class="diff-banner" id="diff-banner">🌱 Easy Mode</div>
+    <div class="quiz-top">
+      <div class="q-counter">Question <strong id="q-num">1</strong> / 10</div>
+      <div class="score-chip" id="score-chip">⭐ <span id="live-score">0</span> pts</div>
+    </div>
+    <div class="timer-block">
+      <div class="timer-num" id="timer-num">15</div>
+      <div class="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+    </div>
+    <div class="dots-row" id="dots-row"></div>
+    <div class="q-card" id="q-card">
+      <div class="q-cat" id="q-cat">📖 Category</div>
+      <div class="q-text" id="q-text">Loading…</div>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="options" id="options"></div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div class="screen" id="screen-end">
+    <div class="end-hero">
+      <span class="end-trophy" id="end-trophy">🏆</span>
+      <div class="end-title" id="end-title">Amazing!</div>
+    </div>
+    <div class="result-card">
+      <div class="score-display" id="result-score">0</div>
+      <div class="score-outof" id="score-outof">out of 10 pts 🎯</div>
+      <div class="grade-badge" id="grade-badge">⭐ Great!</div>
+      <div class="breakdown">
+        <div class="bd-item"><span class="bd-emoji">✅</span><span class="bd-val" id="bd-correct" style="color:var(--correct)">0</span><span class="bd-lbl">Correct</span></div>
+        <div class="bd-item"><span class="bd-emoji">❌</span><span class="bd-val" id="bd-wrong" style="color:var(--wrong)">0</span><span class="bd-lbl">Wrong</span></div>
+        <div class="bd-item"><span class="bd-emoji">⚡</span><span class="bd-val" id="bd-avg" style="color:var(--accent2)">0s</span><span class="bd-lbl">Avg Time</span></div>
+        <div class="bd-item"><span class="bd-emoji" id="bd-diff-emoji">🌱</span><span class="bd-val" id="bd-diff" style="color:var(--easy)">Easy</span><span class="bd-lbl">Difficulty</span></div>
+      </div>
+    </div>
+    <div class="lb-card" style="animation:cardIn 0.6s 0.4s both">
+      <div class="lb-title">🏅 Leaderboard</div>
+      <ul class="lb-list" id="lb-end"></ul>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goHome()">🏠 Home</button>
+      <button class="btn btn-primary" onclick="replayGame()">🔄 Play Again!</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══ QUESTION BANK ══
+const QB = {
+  easy:[
+    {cat:"🌍 Geography", q:"What is the capital city of France?",                 opts:["Berlin","Madrid","Paris","Rome"],                             ans:2},
+    {cat:"🔬 Science",   q:"What color do you get mixing red and blue?",           opts:["Green","Purple","Orange","Brown"],                            ans:1},
+    {cat:"🐾 Animals",   q:"How many legs does a spider have?",                    opts:["4","6","8","10"],                                             ans:2},
+    {cat:"📚 General",   q:"How many days are in a week?",                         opts:["5","6","7","8"],                                              ans:2},
+    {cat:"🔬 Science",   q:"What do plants need to make their food?",              opts:["Moonlight","Sunlight","Starlight","Rain"],                     ans:1},
+    {cat:"🌍 Geography", q:"Which ocean is the largest on Earth?",                 opts:["Atlantic","Indian","Arctic","Pacific"],                       ans:3},
+    {cat:"📚 General",   q:"How many months are in a year?",                       opts:["10","11","12","13"],                                          ans:2},
+    {cat:"🔢 Math",      q:"What is 5 + 7?",                                       opts:["10","11","12","13"],                                          ans:2},
+    {cat:"🐾 Animals",   q:"What sound does a cow make?",                          opts:["Baa","Oink","Moo","Cluck"],                                   ans:2},
+    {cat:"🌍 Geography", q:"What is the capital of Japan?",                        opts:["Osaka","Kyoto","Seoul","Tokyo"],                              ans:3},
+    {cat:"🔢 Math",      q:"What is 10 × 2?",                                      opts:["15","18","20","22"],                                          ans:2},
+    {cat:"📚 General",   q:"How many sides does a triangle have?",                 opts:["2","3","4","5"],                                              ans:1},
+    {cat:"🐾 Animals",   q:"What is the largest land animal?",                     opts:["Giraffe","Rhino","Elephant","Hippo"],                         ans:2},
+    {cat:"🔬 Science",   q:"What gas do humans breathe in to survive?",            opts:["Carbon Dioxide","Nitrogen","Oxygen","Hydrogen"],              ans:2},
+    {cat:"🌍 Geography", q:"Which is the smallest continent?",                     opts:["Europe","Antarctica","Australia","South America"],            ans:2},
+  ],
+  medium:[
+    {cat:"🔬 Science",   q:"What is the chemical symbol for Gold?",                opts:["Gd","Au","Ag","Go"],                                          ans:1},
+    {cat:"📜 History",   q:"In which year did World War II end?",                  opts:["1943","1944","1945","1946"],                                  ans:2},
+    {cat:"💻 Tech",      q:"What does 'CPU' stand for?",                           opts:["Core Processing Unit","Central Processing Unit","Computer Personal Unit","Central Program Utility"], ans:1},
+    {cat:"🔬 Science",   q:"How many planets are in our Solar System?",            opts:["7","8","9","10"],                                             ans:1},
+    {cat:"📚 Literature",q:"Who wrote 'Romeo and Juliet'?",                        opts:["Charles Dickens","Jane Austen","William Shakespeare","Mark Twain"], ans:2},
+    {cat:"🔢 Math",      q:"What is the value of π to 2 decimal places?",          opts:["3.12","3.14","3.16","3.18"],                                  ans:1},
+    {cat:"💻 Tech",      q:"Which company created the iPhone?",                    opts:["Samsung","Microsoft","Apple","Google"],                       ans:2},
+    {cat:"📜 History",   q:"Who was the first person to walk on the Moon?",        opts:["Buzz Aldrin","Yuri Gagarin","Neil Armstrong","John Glenn"],    ans:2},
+    {cat:"🔬 Science",   q:"What gas do plants absorb from the atmosphere?",       opts:["Oxygen","Nitrogen","Carbon Dioxide","Hydrogen"],              ans:2},
+    {cat:"🔢 Math",      q:"What is the square root of 144?",                      opts:["10","11","12","13"],                                          ans:2},
+    {cat:"🌍 Geography", q:"Which river is the longest in the world?",             opts:["Amazon","Yangtze","Nile","Mississippi"],                      ans:2},
+    {cat:"🎮 Pop Culture",q:"What is the best-selling video game of all time?",    opts:["Tetris","GTA V","Minecraft","Wii Sports"],                    ans:2},
+    {cat:"🔬 Science",   q:"Approximately how fast does light travel (km/s)?",     opts:["200,000","300,000","400,000","500,000"],                       ans:1},
+    {cat:"🎵 Music",     q:"How many strings does a standard guitar have?",        opts:["4","5","6","7"],                                              ans:2},
+    {cat:"🐾 Animals",   q:"What is the fastest land animal on Earth?",            opts:["Lion","Cheetah","Leopard","Greyhound"],                       ans:1},
+  ],
+  hard:[
+    {cat:"🔬 Science",   q:"What is the atomic number of Carbon?",                opts:["4","6","8","12"],                                             ans:1},
+    {cat:"📜 History",   q:"In which year was the Magna Carta signed?",            opts:["1066","1215","1348","1492"],                                  ans:1},
+    {cat:"💻 Tech",      q:"What does 'HTTP' stand for?",                          opts:["HyperText Transfer Protocol","HyperText Transmission Process","High Transfer Text Program","HyperTech Transfer Protocol"], ans:0},
+    {cat:"🔢 Math",      q:"What is the derivative of sin(x)?",                    opts:["−sin(x)","cos(x)","−cos(x)","tan(x)"],                        ans:1},
+    {cat:"🌍 Geography", q:"What is the deepest lake in the world?",               opts:["Lake Titicaca","Lake Superior","Lake Baikal","Caspian Sea"],  ans:2},
+    {cat:"📚 Literature",q:"In which novel does Jay Gatsby appear?",               opts:["Moby Dick","The Sun Also Rises","The Great Gatsby","Ulysses"], ans:2},
+    {cat:"🔬 Science",   q:"Which element has the highest melting point?",         opts:["Iron","Titanium","Tungsten","Osmium"],                        ans:2},
+    {cat:"📜 History",   q:"Who was the first Emperor of China?",                  opts:["Kublai Khan","Genghis Khan","Qin Shi Huang","Emperor Wu"],    ans:2},
+    {cat:"🔢 Math",      q:"What is Euler's number (e) to 2 decimal places?",      opts:["2.71","2.72","2.73","2.74"],                                  ans:0},
+    {cat:"🔬 Science",   q:"What is the powerhouse of the cell?",                  opts:["Nucleus","Ribosome","Mitochondria","Golgi Body"],              ans:2},
+    {cat:"💻 Tech",      q:"In binary, what is the decimal value of 1010?",        opts:["8","10","12","14"],                                           ans:1},
+    {cat:"🌍 Geography", q:"Which country has the most natural lakes?",            opts:["USA","Russia","Canada","Brazil"],                             ans:2},
+    {cat:"📜 History",   q:"What year did the Berlin Wall fall?",                  opts:["1987","1988","1989","1990"],                                  ans:2},
+    {cat:"🔬 Science",   q:"How many bones are in the adult human body?",          opts:["196","206","216","226"],                                      ans:1},
+    {cat:"🔢 Math",      q:"What is 15% of 200?",                                  opts:["20","25","30","35"],                                          ans:2},
+  ]
+};
+
+const DIFF = {
+  easy:   {time:15, emoji:'🌱', color:'var(--easy)',   label:'Easy',   pts:1},
+  medium: {time:10, emoji:'🔥', color:'var(--medium)', label:'Medium', pts:2},
+  hard:   {time:7,  emoji:'💀', color:'var(--hard)',   label:'Hard',   pts:3},
+};
+
+// STATE
+let questions=[], curQ=0, score=0, answered=false;
+let timerInterval=null, timeLeft=10, maxTime=10;
+let results=[], timeTaken=[], streak=0;
+let selectedDiff=null;
+let lb=JSON.parse(localStorage.getItem('qm4_lb')||'[]');
+
+// DIFF SELECTION
+function selectDiff(diff, card){
+  selectedDiff=diff;
+  document.querySelectorAll('.diff-card').forEach(c=>c.classList.remove('selected'));
+  card.classList.add('selected');
+  const btn=document.getElementById('start-btn');
+  btn.disabled=false;
+  btn.textContent=DIFF[diff].emoji+'  Start '+DIFF[diff].label+' Mode!';
+}
+
+// BG EMOJIS
+const bgSet=['🧠','⭐','🎯','💡','📚','🔥','💫','🏆','✨','🎉','🌟','💎','🚀','❓','🎓','💯'];
+const bgWrap=document.getElementById('bgwrap');
+for(let i=0;i<22;i++){
+  const el=document.createElement('div'); el.className='bg-emoji';
+  el.textContent=bgSet[~~(Math.random()*bgSet.length)];
+  el.style.left=Math.random()*100+'vw';
+  el.style.animationDuration=(8+Math.random()*12)+'s';
+  el.style.animationDelay=(Math.random()*15)+'s';
+  el.style.fontSize=(1.2+Math.random()*1.8)+'rem';
+  bgWrap.appendChild(el);
+}
+
+// PARTICLES
+const pc=document.getElementById('pcanvas'), px=pc.getContext('2d');
+let parts=[];
+function resPC(){pc.width=window.innerWidth;pc.height=window.innerHeight;}
+resPC(); window.addEventListener('resize',resPC);
+function spawnParts(x,y,col,n=14){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=2+Math.random()*6;
+    parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,r:3+Math.random()*5,col,life:1,decay:0.02+Math.random()*0.02});
+  }
+}
+(function animParts(){
+  px.clearRect(0,0,pc.width,pc.height);
+  parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.life-=p.decay;px.globalAlpha=p.life;px.fillStyle=p.col;px.beginPath();px.arc(p.x,p.y,p.r,0,Math.PI*2);px.fill();return p.life>0;});
+  px.globalAlpha=1;requestAnimationFrame(animParts);
+})();
+
+function confetti(){
+  const cols=['#a78bfa','#fbbf24','#f472b6','#34d399','#60a5fa','#f87171','#fff'];
+  for(let i=0;i<90;i++){
+    const el=document.createElement('div'); el.className='confetti-piece';
+    const big=Math.random()>0.7;
+    el.style.cssText=`left:${Math.random()*100}vw;top:0;background:${cols[~~(Math.random()*cols.length)]};width:${big?12:7}px;height:${big?12:7}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${1.5+Math.random()*2.5}s;animation-delay:${Math.random()*0.6}s;`;
+    document.body.appendChild(el); setTimeout(()=>el.remove(),4000);
+  }
+}
+function floatReact(emoji,x,y){
+  const el=document.createElement('div'); el.className='reaction-float'; el.textContent=emoji;
+  el.style.left=(x-24)+'px'; el.style.top=y+'px';
+  document.body.appendChild(el); setTimeout(()=>el.remove(),1200);
+}
+function addRipple(btn,e){
+  const r=btn.getBoundingClientRect(),s=Math.max(r.width,r.height);
+  const rp=document.createElement('div'); rp.className='ripple';
+  rp.style.cssText=`width:${s}px;height:${s}px;left:${e.clientX-r.left-s/2}px;top:${e.clientY-r.top-s/2}px`;
+  btn.appendChild(rp); setTimeout(()=>rp.remove(),600);
+}
+function showStreak(n){
+  const msgs=['🔥 3 In A Row!','🔥🔥 4 Streak!','🔥🔥🔥 ON FIRE!','⚡ UNSTOPPABLE!','👑 LEGENDARY!'];
+  const el=document.createElement('div'); el.className='streak-popup';
+  el.innerHTML=`<div class="streak-inner">${msgs[Math.min(n-3,msgs.length-1)]}</div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.animation='streakBoom 0.3s ease reverse forwards';setTimeout(()=>el.remove(),300);},1400);
+}
+
+// HELPERS
+function shuffle(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=~~(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');}
+function goHome(){show('start');renderLb('lb-start');updateHi();}
+function replayGame(){startGame();}
+
+// START GAME
+function startGame(){
+  if(!selectedDiff) return;
+  const cfg=DIFF[selectedDiff];
+  questions=shuffle(QB[selectedDiff]).slice(0,10);
+  curQ=0; score=0; results=[]; timeTaken=[]; streak=0;
+  maxTime=cfg.time;
+
+  const banner=document.getElementById('diff-banner');
+  banner.textContent=cfg.emoji+' '+cfg.label+' Mode — +'+cfg.pts+' pt'+(cfg.pts>1?'s':'')+' per correct answer';
+  banner.className='diff-banner '+selectedDiff;
+
+  document.getElementById('live-score').textContent='0';
+  buildDots(); show('quiz'); loadQ();
+}
+
+// DOTS
+function buildDots(){
+  const row=document.getElementById('dots-row'); row.innerHTML='';
+  for(let i=0;i<10;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===0?' current':''); d.id='dot-'+i; row.appendChild(d);
+  }
+}
+function updDot(i,ok){
+  const d=document.getElementById('dot-'+i); if(!d)return;
+  d.classList.remove('current'); d.classList.add(ok?'correct':'wrong');
+  const n=document.getElementById('dot-'+(i+1)); if(n)n.classList.add('current');
+}
+
+// LOAD QUESTION
+function loadQ(){
+  answered=false;
+  const q=questions[curQ];
+  document.getElementById('q-num').textContent=curQ+1;
+  document.getElementById('q-cat').textContent=q.cat;
+  document.getElementById('q-text').textContent=q.q;
+  document.getElementById('feedback').className='feedback';
+  document.getElementById('feedback').innerHTML='';
+
+  const card=document.getElementById('q-card');
+  card.className='q-card '+selectedDiff;
+  card.style.animation='none'; card.offsetHeight;
+  card.style.animation='cardIn 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+
+  const wrap=document.getElementById('options'); wrap.innerHTML='';
+  ['A','B','C','D'].forEach((lbl,i)=>{
+    const btn=document.createElement('button'); btn.className='opt-btn';
+    btn.innerHTML=`<span class="opt-label">${lbl}</span>${q.opts[i]}`;
+    btn.onclick=(e)=>{addRipple(btn,e);selectAns(i,btn);};
+    wrap.appendChild(btn);
+  });
+  startTimer();
+}
+
+// TIMER
+function startTimer(){
+  timeLeft=maxTime; clearInterval(timerInterval); updTimer();
+  timerInterval=setInterval(()=>{timeLeft--; updTimer(); if(timeLeft<=0){clearInterval(timerInterval);timeUp();}},1000);
+}
+function updTimer(){
+  const num=document.getElementById('timer-num'), fill=document.getElementById('timer-fill');
+  num.textContent=timeLeft; fill.style.width=(timeLeft/maxTime*100)+'%';
+  const danger=timeLeft<=Math.ceil(maxTime*0.3);
+  if(danger){num.classList.add('danger');fill.classList.add('danger');}
+  else{num.classList.remove('danger');fill.classList.remove('danger');}
+}
+function timeUp(){
+  if(answered)return; answered=true; timeTaken.push(maxTime); streak=0;
+  revealAns(); showFeedback(false,true); updDot(curQ,false); results.push(false); schedNext();
+}
+
+// SELECT ANSWER
+function selectAns(idx,btn){
+  if(answered)return; answered=true; clearInterval(timerInterval);
+  timeTaken.push(maxTime-timeLeft);
+  const q=questions[curQ], ok=idx===q.ans;
+  const btns=document.querySelectorAll('.opt-btn');
+  btns[idx].classList.add(ok?'correct':'wrong');
+  btns.forEach(b=>b.disabled=true);
+  if(!ok) revealAns();
+
+  const r=btn.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+  const cfg=DIFF[selectedDiff];
+
+  if(ok){
+    const pn=selectedDiff==='hard'?30:selectedDiff==='medium'?20:14;
+    spawnParts(cx,cy,'#34d399',pn); spawnParts(cx,cy,'#fbbf24',pn/2);
+    score+=cfg.pts; streak++;
+    document.getElementById('live-score').textContent=score;
+    const chip=document.getElementById('score-chip');
+    chip.classList.remove('bump'); chip.offsetHeight; chip.classList.add('bump');
+    floatReact(['✅','🎉','🌟','💯','🔥','👏','🎊','💥'][~~(Math.random()*8)],cx,cy-60);
+    if(streak>=3) showStreak(streak);
+    const ring=document.createElement('div'); ring.className='pulse-ring';
+    ring.style.cssText=`width:${r.width}px;height:${r.width}px;left:${cx-r.width/2}px;top:${cy-r.width/2}px`;
+    document.body.appendChild(ring); setTimeout(()=>ring.remove(),800);
+  } else {
+    spawnParts(cx,cy,'#f87171',16); streak=0;
+    floatReact(['❌','😬','💀','😅','🙈','😭'][~~(Math.random()*6)],cx,cy-60);
+  }
+  showFeedback(ok,false); updDot(curQ,ok); results.push(ok); schedNext();
+}
+
+function revealAns(){
+  const btns=document.querySelectorAll('.opt-btn');
+  btns.forEach((b,i)=>{b.disabled=true;if(i===questions[curQ].ans&&!b.classList.contains('correct'))b.classList.add('reveal');});
+}
+
+function showFeedback(ok,timedOut){
+  const fb=document.getElementById('feedback');
+  const q=questions[curQ], cfg=DIFF[selectedDiff];
+  if(timedOut){
+    fb.className='feedback wrong show';
+    fb.innerHTML=`<span class="feed-emoji">⏰</span><div class="feed-msg">Time's up!<small>✅ Answer: <strong>${q.opts[q.ans]}</strong></small></div>`;
+  } else if(ok){
+    const e=['🎉','🌟','💯','🔥','👏','🏆','⚡','🎊'][~~(Math.random()*8)];
+    const m=['Excellent!','Nailed it! 💪','Spot on! 🎯','Brilliant!','Perfect!','Outstanding! 🌟'];
+    fb.className='feedback correct show';
+    fb.innerHTML=`<span class="feed-emoji">${e}</span><div class="feed-msg">${m[~~(Math.random()*m.length)]}<small>+${cfg.pts} pt${cfg.pts>1?'s':''}! 🌟 Total: ${score}</small></div>`;
+  } else {
+    const e=['❌','😬','😅','🙈','💔','😢'][~~(Math.random()*6)];
+    fb.className='feedback wrong show';
+    fb.innerHTML=`<span class="feed-emoji">${e}</span><div class="feed-msg">Not quite! Keep going 💪<small>✅ Correct: <strong>${q.opts[q.ans]}</strong></small></div>`;
+  }
+}
+
+function schedNext(){setTimeout(()=>{curQ++; if(curQ<10) loadQ(); else endGame();},1600);}
+
+// END GAME
+function endGame(){
+  const correct=results.filter(Boolean).length, wrong=10-correct;
+  const avg=timeTaken.length?(timeTaken.reduce((a,b)=>a+b,0)/timeTaken.length).toFixed(1):0;
+  const cfg=DIFF[selectedDiff], maxPts=10*cfg.pts, pct=score/maxPts;
+
+  document.getElementById('result-score').textContent=score;
+  document.getElementById('score-outof').textContent=`out of ${maxPts} possible pts 🎯`;
+  document.getElementById('bd-correct').textContent=correct;
+  document.getElementById('bd-wrong').textContent=wrong;
+  document.getElementById('bd-avg').textContent=avg+'s';
+  document.getElementById('bd-diff-emoji').textContent=cfg.emoji;
+  const bdDiff=document.getElementById('bd-diff'); bdDiff.textContent=cfg.label; bdDiff.style.color=cfg.color;
+
+  let trophy,title,gradeText,gradeClass;
+  if(pct===1){trophy='🏆';title='PERFECT SCORE! 👑';gradeText='👑 S RANK — LEGENDARY!';gradeClass='grade-s';confetti();setTimeout(confetti,700);}
+  else if(pct>=0.8){trophy='🥇';title='Excellent! 🌟';gradeText='🌟 A RANK — EXCELLENT!';gradeClass='grade-a';confetti();}
+  else if(pct>=0.6){trophy='🥈';title='Well Done! 💪';gradeText='💫 B RANK — GOOD JOB!';gradeClass='grade-b';}
+  else if(pct>=0.4){trophy='🥉';title='Keep Going! 📚';gradeText='📚 C RANK — PRACTICE MORE';gradeClass='grade-c';}
+  else{trophy='😅';title='Better Luck Next Time!';gradeText='😬 D RANK — KEEP STUDYING';gradeClass='grade-c';}
+
+  document.getElementById('end-trophy').textContent=trophy;
+  document.getElementById('end-title').textContent=title;
+  const gb=document.getElementById('grade-badge'); gb.textContent=gradeText; gb.className='grade-badge '+gradeClass;
+
+  const name=document.getElementById('player-name').value.trim()||'Anonymous 🎮';
+  lb.push({name,score,diff:selectedDiff,maxPts,date:new Date().toLocaleDateString()});
+  lb.sort((a,b)=>b.score-a.score); lb=lb.slice(0,10);
+  localStorage.setItem('qm4_lb',JSON.stringify(lb));
+  renderLb('lb-end'); updateHi(); show('end');
+}
+
+// LEADERBOARD
+const rEmoji=['🥇','🥈','🥉','4️⃣','5️⃣'];
+const rClass=['gold','silver','bronze','other','other'];
+function renderLb(id){
+  const list=document.getElementById(id); list.innerHTML='';
+  if(!lb.length){list.innerHTML='<li><span class="lb-empty">🌟 No scores yet — be first!</span></li>';return;}
+  lb.slice(0,5).forEach((e,i)=>{
+    const dcfg=DIFF[e.diff]||DIFF.easy;
+    const li=document.createElement('li');
+    li.innerHTML=`<span class="lb-rank ${rClass[i]||'other'}">${rEmoji[i]||i+1}</span>
+      <span class="lb-name">${e.name}</span>
+      <span class="lb-diff-tag ${e.diff||'easy'}">${dcfg.emoji} ${dcfg.label}</span>
+      <span class="lb-score">${e.score} pts ⭐</span>`;
+    list.appendChild(li);
+  });
+}
+function updateHi(){
+  if(lb.length){
+    document.getElementById('hi-score').textContent=lb[0].score+' pts';
+    const dcfg=DIFF[lb[0].diff]||DIFF.easy;
+    document.getElementById('hi-diff').textContent=dcfg.emoji+' '+dcfg.label;
+  } else {
+    document.getElementById('hi-score').textContent='—';
+    document.getElementById('hi-diff').textContent='—';
+  }
+}
+
+renderLb('lb-start'); updateHi();
+</script>
+</body>
+</html>
